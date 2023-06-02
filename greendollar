@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC777/ERC777.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract greendollar is ERC777, Ownable, Pausable {
+    IERC20 private constant USDC = IERC20(0x1977822061d8a394726803e2c2F6524a4E3e7Aff); // Replace <USDC_TOKEN_ADDRESS> with the actual USDC token contract address, for Sapolina it's 0x1977822061d8a394726803e2c2F6524a4E3e7Aff
+
+    constructor() ERC777("Green Dollar Token", "GDT", new address[](0)) {
+    }
+
+    function wrap(uint256 amount) public whenNotPaused {
+        // Transfer the USDC tokens to this contract
+        require(USDC.transferFrom(msg.sender, address(this), amount), "Transfer failed");
+
+        // Approve the contract to spend the transferred tokens
+        require(USDC.approve(address(this), amount), "Approval failed");
+
+        // Mint an equivalent amount of ERC777 tokens to the sender
+        _mint(msg.sender, amount, "", "");
+    }
+
+    function unwrap(uint256 amount) public whenNotPaused {
+        // Burn the specified amount of the sender's ERC777 tokens
+        _burn(msg.sender, amount, "", "");
+
+        // Transfer an equivalent amount of USDC tokens from this contract to the sender
+        require(USDC.transfer(msg.sender, amount), "Transfer failed");
+    }
+
+    function emergencyPause() public onlyOwner {
+        _pause();
+    }
+
+    function emergencyUnpause() public onlyOwner {
+        _unpause();
+    }
+
+    receive() external payable {
+        // Use the received ETH to cover gas costs
+    }
+}
